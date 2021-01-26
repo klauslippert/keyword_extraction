@@ -1,0 +1,4 @@
+*.TXT
+__pycache__/*
+.ipynb_checkpoints/*
+*.p
