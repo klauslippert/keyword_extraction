@@ -1,4 +1,5 @@
 import pandas as pd
+import re
 
 class DictLU_Create_Dict():
     def __init__(self,df):
@@ -18,6 +19,7 @@ class DictLU_Create_Dict():
         
         2do check input type
         2do check input column-names
+        2do bug: if one of the dicts_* is empty -> error
         '''
         self.df = df
         _=self.split_into_upper_lower()
@@ -73,22 +75,108 @@ class DictLU_Extract_Exact():
 
         self.punct_list = [' ',',', '.', '?', '!','"',':','’',
                            '(',')','[',']','{','}' ]        
+        self.punct_list_small = [',', '\.', '\?', '!','"',':','’',
+                           '\(','\)','\[','\]','{','}' ]  
         
-
-        
-    def run(self,raw_text):
-        '''extraction process
+    def fast(self,raw_text):
+        '''fast extraction process:
+           take only the first occurence of a term,
+           no index information, etc.
         '''
-        
         self.text = raw_text
+        #preprocess 
+        text = ' '+raw_text+' '
+        for punct in self.punct_list_small:
+            text=re.sub(punct,' ',text)    
+           
+        #print('|'+text+'|')    
+        def extract_fast(all_dicts,text):
+            found_ids=[]
+            found_words=[]
+            for this_dict in all_dicts[::-1]:
+                
+                for searchword in list(this_dict.keys()):
+                    idx=text.find(' '+searchword+' ')
+                    
+                    if idx!=-1:
+                        
+                        found_ids.append(this_dict[searchword])
+                        found_words.append(searchword)
+                        #print('|'+text[idx:idx+len(searchword)+2]+'|',searchword,idx)
+                        text = re.sub(searchword,'_',text)
+                        
+                        
+            return text,found_ids, found_words
         
-        text, found_words_upper = self.extract(self.dicts_upper,raw_text)
+        text, self.found_ids_upper,self.found_words_upper = extract_fast(self.dicts_upper,text)
         
-        text = text.lower()
-        text, found_words_lower = self.extract(self.dicts_lower,text)                    
+        text=text.lower()
+        
+        text, self.found_ids_lower,self.found_words_lower = extract_fast(self.dicts_lower,text)
+        
+        self.fast_ids = self.found_ids_upper + self.found_ids_lower
+        
+        
+    def full(self,raw_text):
+        '''full extraction process
+        '''
+        _=self.fast(raw_text)
+        
+        
+        
+        def extract_full(searchwords,meshids,text):
+            found_words=[]
+            for searchword,meshid in zip(searchwords,meshids):   
+                #print(searchword,meshid)
+                
+                while 1==1:
+                    #print(searchword)
+                    searchword2=' '+searchword+' '
+                    idx = text.find(searchword2)
+                    if idx == -1:
+                        break
+                    
+                    start_index = idx 
+                    end_index = start_index + len(searchword2)
+                    
+                    
+                    found_words.append((searchword,meshid,start_index,end_index-2))
+                    ## anyway, mask the word for next loop
+                    text = text[:start_index] +\
+                               ' '+'_'*(len(searchword2)-2)+' ' +\
+                               text[end_index:]
+                    #print(text)
+                    #print('****')
+            return text,found_words                           
+                        
+                        
+        #preprocess 
+        text = ' '+raw_text+' '
+        for punct in self.punct_list_small:
+            text=re.sub(punct,' ',text)    
+        #print(text)
+        
+        if len(self.found_words_upper) > 0:
+            text,res_words_upper=extract_full(self.found_words_lower,self.found_ids_lower,text)
+        else:
+            res_words_upper=[]
+        
+        text=text.lower()
+        text,res_words_lower=extract_full(self.found_words_lower,self.found_ids_lower,text)
+        found_words=res_words_upper+res_words_lower
+        
+        #self.ff=found_words
+        #self.text = raw_text
+        #for punct in self.punct_list_small:
+        #    raw_text=re.sub(punct,' ',raw_text)  
+        
+        #text, found_words_upper = self.extract(self.dicts_upper,raw_text)
+        
+        #text = text.lower()
+        #text, found_words_lower = self.extract(self.dicts_lower,text)                    
         #print(found_words_lower)
         
-        found_words = found_words_upper + found_words_lower
+        #found_words = found_words_upper + found_words_lower
                     
         unique_ids = list(set([x[1] for x in found_words]))
 
@@ -110,12 +198,12 @@ class DictLU_Extract_Exact():
                             }
                           )
         self.result=result
-        self.proc_text = text
+        #self.proc_text = text
         
     def extract(self,all_dicts,text):   
-        
+        bkp=text 
         found_words=[]
-        text=text+' '
+        text=' '+text+' '
         for this_dict in all_dicts[::-1]:
     
             for searchword in list(this_dict.keys()):
@@ -123,25 +211,41 @@ class DictLU_Extract_Exact():
                 
         
                 while 1==1:
-                    start_index = text.find(searchword)
+                    searchword2=' '+searchword+' '
+                    start_index = text.find(searchword2)
                     
                     if start_index not in [-1]:
-                        end_index = start_index + len(searchword) 
+                        end_index = start_index + len(searchword2)
                         ## is it a word with only punctuation as sourounding?
                         ## yes ? then extract it
-                        if ( (start_index == 0) and \
-                             (text[end_index] in self.punct_list) ) \
-                           or \
-                           ( (text[start_index-1] in self.punct_list) and \
-                             (text[end_index] in self.punct_list) ) :
+                        
+                        
+                        #if ( (start_index == 0) and \
+                        #     (text[end_index] in self.punct_list) ) \
+                        #   or \
+                        #   ( (text[start_index-1] in self.punct_list) and \
+                        #     (text[end_index] in self.punct_list) ) :
                            
-                            search_id=this_dict[searchword]
-                            found_words.append((searchword,search_id,start_index,end_index))
+                        search_id=this_dict[searchword]
+                        
+
+                        found_words.append((searchword,search_id,start_index,end_index))
+                        #else:
+                        #    print('nonono')
                             
+                            #start_index=start_index-1
+                        #end_index=end_index-2
+                        print('|'+text[start_index:end_index]+'|','|'+text[start_index-1:end_index+1]+'|',search_id)
+                        
                         ## anyway, mask the word for next loop
                         text = text[:start_index] +\
-                               '_'*len(searchword) +\
+                               '_'*len(searchword2) +\
                                text[end_index:]
+                           
+                        
+                    
+                        
+                           
                     else: 
                         break
         return text, found_words

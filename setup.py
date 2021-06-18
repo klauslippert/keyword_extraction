@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="keyword_extraction", 
-    version="0.1",
+    version="0.2",
     author="Klaus Lippert",
     author_email="",
     description="keyword extraction using a simple dictionary lookup approach",
