@@ -4,7 +4,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="keywordextraction", 
+    name="keyword_extraction", 
     version="0.1",
     author="Klaus Lippert",
     author_email="",
