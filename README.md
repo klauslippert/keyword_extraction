@@ -1,6 +1,7 @@
 ## keyword extraction
 using a simple dictionary lookup approach.
 
+[![DOI](https://zenodo.org/badge/333018337.svg)](https://zenodo.org/doi/10.5281/zenodo.11068057)
 
 keyword_extraction.py consists of 3 classes:
 
